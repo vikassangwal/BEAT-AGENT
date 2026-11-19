@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="manifest" href="/manifest.json">
+  <title>BEAST AGENT • Master Command Center</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <div class="logo-group">
+      <span class="logo-badge">BEAST</span>
+      <h1>AGENT HUB</h1>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span id="agent-status-text">SYSTEM ONLINE</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Column: Controls & Commands -->
+    <div class="card">
+      <div class="card-title">
+        <span>⚡ Multi-Model Intelligence</span>
+        <small id="active-model-display">Auto-Routing</small>
+      </div>
+      <div class="chip-row">
+        <button class="chip active" onclick="setModel('auto')">Auto-Router</button>
+        <button class="chip" onclick="setModel('claude')">Claude 3.7</button>
+        <button class="chip" onclick="setModel('gemini')">Gemini 2.5</button>
+        <button class="chip" onclick="setModel('openai')">OpenAI o3</button>
+      </div>
+
+      <div class="card-title" style="margin-top: 10px;">
+        <span>🚀 Beast Slash Commands</span>
+      </div>
+      <div class="chip-row">
+        <button class="chip" onclick="runCommand('/init')">/init (Memory)</button>
+        <button class="chip" onclick="runCommand('/prd')">/prd (Plan)</button>
+        <button class="chip" onclick="runAutoTest()">/autotest (Self-Heal)</button>
+        <button class="chip" onclick="runSecurityAudit()">/security-audit</button>
+        <button class="chip" onclick="runScreenAuto()">/screen-auto</button>
+        <button class="chip" onclick="runCommand('/commit-safe')">/commit-safe</button>
+      </div>
+
+      <div class="card-title" style="margin-top: 10px;">
+        <span>🎙️ Direct Prompt & Voice Command</span>
+      </div>
+      <div class="input-group">
+        <input type="text" id="prompt-input" placeholder="Give Beast Agent any task or instructions..." onkeydown="handleKey(event)">
+        <button class="action-btn" onclick="startVoiceInput()" title="Voice Input" style="padding: 12px 14px;">🎙️</button>
+        <button class="action-btn" onclick="sendPrompt()">Execute</button>
+      </div>
+    </div>
+
+    <!-- Right Column: Terminal & Screen Output -->
+    <div class="card">
+      <div class="card-title">
+        <span>🖥️ Live Execution Feed</span>
+        <button class="chip" onclick="clearFeed()" style="padding: 2px 8px; font-size: 11px;">Clear</button>
+      </div>
+      <div class="console-box" id="console-output">
+[BEAST AGENT] Initializing Core Orchestrator...
+[INFO] Multi-Model Router connected (Claude + Gemini + OpenAI)
+[INFO] High-Security Guardrails: Active (Secret Isolation & Command Filter)
+[INFO] Screen Auto-Work Engine: Ready
+[INFO] PWA All-Device Support: Enabled
+
+Type a prompt or select a slash command to begin.</div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="action-btn green" style="flex: 1;" onclick="runAutoTest()">
+          🧪 Run Auto-Testing & Self-Healing
+        </button>
+        <button class="action-btn" style="flex: 1;" onclick="runScreenAuto()">
+          👁️ Screen Auto-Work
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

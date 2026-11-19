@@ -1,0 +1,15 @@
+{
+  "name": "beast-agent",
+  "version": "1.0.0",
+  "description": "All-in-One Multi-Model Beast Agent with Auto-Testing, Screen Auto-Work, and High-Security Guardrails",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node tests/runner.js",
+    "autotest": "node src/tester.js"
+  },
+  "keywords": ["ai-agent", "multi-model", "claude", "gemini", "chatgpt", "computer-use", "self-healing", "security"],
+  "author": "vikassangwal",
+  "license": "MIT"
+}
