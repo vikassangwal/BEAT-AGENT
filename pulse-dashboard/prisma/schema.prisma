@@ -1,0 +1,1145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  DELETED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+  GUEST
+  CUSTOM
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE
+  EXECUTE
+  APPROVE
+  SHARE
+  EXPORT
+  IMPORT
+}
+
+enum ResourceType {
+  WORKSPACE
+  PROJECT
+  PAGE
+  BLOCK
+  DATABASE
+  AUTOMATION
+  TEMPLATE
+  INTEGRATION
+  WEBHOOK
+  API_KEY
+  SECRET
+  USER
+  ROLE
+  AUDIT_LOG
+  SESSION
+  DEVICE
+  IP_ALLOWLIST
+  SSO_CONFIG
+  SCIM_CONFIG
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  MICROSOFT
+  OKTA
+  AUTH0
+  KEYCLOAK
+  SAML
+  OIDC
+  LDAP
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+  IMPERSONATED
+}
+
+enum AuditEventType {
+  // Auth events
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_CHALLENGE_SUCCESS
+  MFA_CHALLENGE_FAILED
+  SSO_LOGIN_SUCCESS
+  SSO_LOGIN_FAILED
+  SCIM_USER_CREATED
+  SCIM_USER_UPDATED
+  SCIM_USER_DELETED
+  SCIM_GROUP_CREATED
+  SCIM_GROUP_UPDATED
+  SCIM_GROUP_DELETED
+
+  // Session events
+  SESSION_CREATED
+  SESSION_REVOKED
+  SESSION_EXPIRED
+  DEVICE_REGISTERED
+  DEVICE_REVOKED
+  CONCURRENT_SESSION_LIMIT_EXCEEDED
+
+  // RBAC events
+  ROLE_CREATED
+  ROLE_UPDATED
+  ROLE_DELETED
+  ROLE_ASSIGNED
+  ROLE_REVOKED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  CUSTOM_ROLE_CREATED
+
+  // Workspace events
+  WORKSPACE_CREATED
+  WORKSPACE_UPDATED
+  WORKSPACE_DELETED
+  WORKSPACE_MEMBER_ADDED
+  WORKSPACE_MEMBER_REMOVED
+  WORKSPACE_MEMBER_ROLE_CHANGED
+  WORKSPACE_SETTINGS_CHANGED
+  WORKSPACE_IP_ALLOWLIST_UPDATED
+  WORKSPACE_SSO_CONFIGURED
+  WORKSPACE_SCIM_CONFIGURED
+
+  // Project/Page events
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  PAGE_CREATED
+  PAGE_UPDATED
+  PAGE_DELETED
+  PAGE_SHARED
+  PAGE_UNSHARED
+
+  // Data events
+  BLOCK_CREATED
+  BLOCK_UPDATED
+  BLOCK_DELETED
+  DATABASE_CREATED
+  DATABASE_UPDATED
+  DATABASE_DELETED
+  DATA_EXPORTED
+  DATA_IMPORTED
+
+  // Automation events
+  AUTOMATION_CREATED
+  AUTOMATION_UPDATED
+  AUTOMATION_DELETED
+  AUTOMATION_EXECUTED
+  AUTOMATION_FAILED
+  WEBHOOK_CREATED
+  WEBHOOK_UPDATED
+  WEBHOOK_DELETED
+  WEBHOOK_DELIVERED
+  WEBHOOK_FAILED
+
+  // Security events
+  IP_BLOCKED
+  IP_ALLOWLISTED
+  GEO_BLOCK_TRIGGERED
+  SUSPICIOUS_ACTIVITY_DETECTED
+  BRUTE_FORCE_DETECTED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SECRET_CREATED
+  SECRET_ACCESSED
+  SECRET_ROTATED
+  SECRET_DELETED
+  VAULT_OPERATION
+  CSP_VIOLATION
+  CSRF_VIOLATION
+  XSS_ATTEMPT
+
+  // Compliance events
+  GDPR_EXPORT_REQUESTED
+  GDPR_EXPORT_COMPLETED
+  GDPR_DELETION_REQUESTED
+  GDPR_DELETION_COMPLETED
+  DATA_RESIDENCY_CHANGED
+  RETENTION_POLICY_APPLIED
+  AUDIT_LOG_EXPORTED
+  COMPLIANCE_REPORT_GENERATED
+}
+
+enum AuditSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  UNKNOWN
+}
+
+enum IPAllowlistType {
+  ALLOW
+  DENY
+  GEO_ALLOW
+  GEO_DENY
+}
+
+enum SecretType {
+  API_KEY
+  DATABASE_URL
+  ENCRYPTION_KEY
+  JWT_SECRET
+  WEBHOOK_SECRET
+  OAUTH_SECRET
+  SAML_CERTIFICATE
+  CUSTOM
+}
+
+enum SecretRotationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ComplianceFramework {
+  SOC2
+  GDPR
+  HIPAA
+  ISO27001
+  CCPA
+  PCI_DSS
+  FEDRAMP
+}
+
+enum DataResidencyRegion {
+  US_EAST
+  US_WEST
+  EU_WEST
+  EU_CENTRAL
+  AP_SOUTHEAST
+  AP_NORTHEAST
+  CA_CENTRAL
+  SA_EAST
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  emailVerified         DateTime?
+  name                  String?
+  avatarUrl             String?
+  status                UserStatus @default(PENDING_VERIFICATION)
+  passwordHash          String?
+  authProvider          AuthProvider @default(LOCAL)
+  providerId            String?
+  mfaEnabled            Boolean   @default(false)
+  mfaSecret             String?
+  mfaBackupCodes        String[]
+  lastLoginAt           DateTime?
+  lastLoginIp           String?
+  failedLoginAttempts   Int       @default(0)
+  lockedUntil           DateTime?
+  passwordChangedAt     DateTime?
+  mustChangePassword    Boolean   @default(false)
+  dataResidencyRegion   DataResidencyRegion?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  // Relations
+  memberships           Membership[]
+  sessions              Session[]
+  devices               Device[]
+  auditLogs             AuditLog[]  @relation("UserAuditLogs")
+  performedAudits       AuditLog[]  @relation("PerformedAudits")
+  ownedWorkspaces       Workspace[] @relation("WorkspaceOwner")
+  apiKeys               ApiKey[]
+  secrets               Secret[]    @relation("SecretOwner")
+  webhookDeliveries     WebhookDelivery[]
+  scimUsers             ScimUser[]  @relation("ScimUserUser")
+  scimGroups            ScimGroup[] @relation("ScimGroupUser")
+
+  @@index([email])
+  @@index([status])
+  @@index([authProvider, providerId])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Workspace {
+  id                    String    @id @default(cuid())
+  name                  String
+  slug                  String    @unique
+  description           String?
+  logoUrl               String?
+  ownerId               String
+  plan                  String    @default("FREE")
+  settings              Json      @default("{}")
+  allowedEmailDomains   String[]
+  ipAllowlistEnabled    Boolean   @default(false)
+  geoBlockingEnabled    Boolean   @default(false)
+  allowedCountries      String[]
+  blockedCountries      String[]
+  maxConcurrentSessions Int       @default(5)
+  sessionTimeoutMinutes Int       @default(480)
+  requireMfa            Boolean   @default(false)
+  passwordPolicy        Json      @default("{}")
+  dataResidencyRegion   DataResidencyRegion?
+  complianceFrameworks  ComplianceFramework[]
+  retentionDays         Int       @default(2555) // 7 years
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  // Relations
+  owner                 User      @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  memberships           Membership[]
+  projects              Project[]
+  roles                 Role[]
+  ipAllowlist           IpAllowlist[]
+  ssoConfig             SsoConfig?
+  scimConfig            ScimConfig?
+  auditLogs             AuditLog[]
+  apiKeys               ApiKey[]
+  secrets               Secret[]
+  webhooks              Webhook[]
+  webhookDeliveries     WebhookDelivery[]
+  retentionPolicies     RetentionPolicy[]
+  complianceReports     ComplianceReport[]
+
+  @@index([slug])
+  @@index([ownerId])
+  @@index([plan])
+  @@map("workspaces")
+}
+
+model Membership {
+  id          String         @id @default(cuid())
+  userId      String
+  workspaceId String
+  roleId      String?
+  role        MembershipRole @default(MEMBER)
+  customRole  String?
+  joinedAt    DateTime       @default(now())
+  invitedBy   String?
+  invitedAt   DateTime?
+  acceptedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean        @default(true)
+  metadata    Json           @default("{}")
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  roleRel     Role?          @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("memberships")
+}
+
+model Role {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  name            String
+  description     String?
+  isSystem        Boolean  @default(false)
+  isDefault       Boolean  @default(false)
+  priority        Int      @default(0)
+  conditions      Json     @default("{}") // ABAC conditions
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace       Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  permissions     RolePermission[]
+  memberships     Membership[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([isSystem])
+  @@map("roles")
+}
+
+model Permission {
+  id          String            @id @default(cuid())
+  resource    ResourceType
+  action      PermissionAction
+  description String?
+  createdAt   DateTime          @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String       @id @default(cuid())
+  roleId       String
+  permissionId String
+  condition    Json?        // Resource-level conditions
+  grantedAt    DateTime     @default(now())
+  grantedBy    String
+
+  role         Role         @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================
+// SESSION & DEVICE MANAGEMENT
+// ============================================
+
+model Session {
+  id              String        @id @default(cuid())
+  userId          String
+  workspaceId     String?
+  tokenHash       String        @unique
+  refreshTokenHash String?      @unique
+  status          SessionStatus @default(ACTIVE)
+  ipAddress       String
+  userAgent       String
+  deviceId        String?
+  location        Json?         // { country, region, city, lat, lon }
+  expiresAt       DateTime
+  lastActivityAt  DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+  revokedAt       DateTime?
+  revokedBy       String?
+  revokedReason   String?
+  metadata        Json          @default("{}")
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  device          Device?       @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([tokenHash])
+  @@index([refreshTokenHash])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([deviceId])
+  @@map("sessions")
+}
+
+model Device {
+  id              String      @id @default(cuid())
+  userId          String
+  workspaceId     String?
+  deviceId        String      @unique // Fingerprint
+  name            String
+  type            DeviceType
+  os              String?
+  browser         String?
+  ipAddress       String
+  location        Json?
+  isTrusted       Boolean     @default(false)
+  lastSeenAt      DateTime    @default(now())
+  registeredAt    DateTime    @default(now())
+  revokedAt       DateTime?
+  pushToken       String?
+  metadata        Json        @default("{}")
+
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace       Workspace?  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([deviceId])
+  @@index([isTrusted])
+  @@map("devices")
+}
+
+// ============================================
+// SSO / SAML / OIDC CONFIGURATION
+// ============================================
+
+model SsoConfig {
+  id                    String      @id @default(cuid())
+  workspaceId           String      @unique
+  provider              AuthProvider
+  enabled               Boolean     @default(false)
+
+  // SAML Configuration
+  samlEntryPoint        String?
+  samlIssuer            String?
+  samlCert              String?
+  samlPrivateKey        String?
+  samlCallbackUrl       String?
+  samlAttributeMapping  Json        @default("{}")
+  samlNameIdFormat      String?
+  samlForceAuthn        Boolean     @default(false)
+  samlAllowIdpInitiated Boolean     @default(true)
+
+  // OIDC Configuration
+  oidcClientId          String?
+  oidcClientSecret      String?
+  oidcIssuer            String?
+  oidcDiscoveryUrl      String?
+  oidcScopes            String[]    @default(["openid", "profile", "email"])
+  oidcPkceEnabled       Boolean     @default(true)
+  oidcAttributeMapping  Json        @default("{}")
+
+  // General
+  autoProvision         Boolean     @default(true)
+  defaultRole           String      @default("MEMBER")
+  domainWhitelist       String[]
+  attributeMapping      Json        @default("{}")
+  metadata              Json        @default("{}")
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  workspace             Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([provider])
+  @@index([enabled])
+  @@map("sso_configs")
+}
+
+// ============================================
+// SCIM 2.0 PROVISIONING
+// ============================================
+
+model ScimConfig {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique
+  enabled           Boolean  @default(false)
+  baseUrl           String
+  bearerToken       String   // Encrypted
+  tokenExpiresAt    DateTime?
+  userSchema        Json     @default("{}")
+  groupSchema       Json     @default("{}")
+  attributeMapping  Json     @default("{}")
+  filterConfig      Json     @default("{}")
+  lastSyncAt        DateTime?
+  syncStatus        String   @default("PENDING")
+  syncError         String?
+  provisioningRules Json     @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("scim_configs")
+}
+
+model ScimUser {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  externalId    String   // ID from IdP
+  userName      String
+  displayName   String?
+  emails        Json     @default("[]")
+  groups        Json     @default("[]")
+  active        Boolean  @default(true)
+  schemas       String[] @default(["urn:ietf:params:scim:schemas:core:2.0:User"])
+  meta          Json     @default("{}")
+  userId        String?  // Local user ID after linking
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User?     @relation("ScimUserUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, externalId])
+  @@unique([workspaceId, userName])
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([active])
+  @@map("scim_users")
+}
+
+model ScimGroup {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  externalId    String
+  displayName   String
+  members       Json     @default("[]")
+  schemas       String[] @default(["urn:ietf:params:scim:schemas:core:2.0:Group"])
+  meta          Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User?     @relation("ScimGroupUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, externalId])
+  @@unique([workspaceId, displayName])
+  @@index([workspaceId])
+  @@map("scim_groups")
+}
+
+// ============================================
+// IP ALLOWLIST / GEO BLOCKING
+// ============================================
+
+model IpAllowlist {
+  id            String           @id @default(cuid())
+  workspaceId   String
+  type          IPAllowlistType
+  value         String           // IP/CIDR or country code
+  description   String?
+  enabled       Boolean          @default(true)
+  expiresAt     DateTime?
+  createdBy     String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  workspace     Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([type, value])
+  @@index([enabled])
+  @@map("ip_allowlist")
+}
+
+// ============================================
+// AUDIT LOGGING
+// ============================================
+
+model AuditLog {
+  id            String         @id @default(cuid())
+  workspaceId   String
+  userId        String?
+  performedBy   String?        // User ID who performed the action
+  eventType     AuditEventType
+  severity      AuditSeverity  @default(INFO)
+  resourceType  ResourceType?
+  resourceId    String?
+  action        String?
+  description   String
+  ipAddress     String?
+  userAgent     String?
+  location      Json?
+  metadata      Json           @default("{}")
+  beforeState   Json?
+  afterState    Json?
+  correlationId String?        // For tracing related events
+  sessionId     String?
+  requestId     String?
+  createdAt     DateTime       @default(now())
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User?          @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: SetNull)
+  performer     User?          @relation("PerformedAudits", fields: [performedBy], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([severity, createdAt])
+  @@index([correlationId])
+  @@index([sessionId])
+  @@map("audit_logs")
+}
+
+model AuditLogExport {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  requestedBy   String
+  status        String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  format        String   @default("JSON") // JSON, CSV, CEF, LEEF
+  filters       Json     @default("{}")
+  dateFrom      DateTime
+  dateTo        DateTime
+  fileUrl       String?
+  fileSize      Int?
+  recordCount   Int?
+  error         String?
+  expiresAt     DateTime?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+
+  @@index([workspaceId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("audit_log_exports")
+}
+
+// ============================================
+// SECRETS MANAGEMENT
+// ============================================
+
+model Secret {
+  id                String            @id @default(cuid())
+  workspaceId       String
+  name              String
+  type              SecretType
+  value             String            // Encrypted
+  version           Int               @default(1)
+  description       String?
+  tags              String[]          @default([])
+  rotationEnabled   Boolean           @default(false)
+  rotationInterval  Int?              // Days
+  lastRotatedAt     DateTime?
+  nextRotationAt    DateTime?
+  rotationStatus    SecretRotationStatus @default(PENDING)
+  rotationError     String?
+  accessCount       Int               @default(0)
+  lastAccessedAt    DateTime?
+  lastAccessedBy    String?
+  expiresAt         DateTime?
+  createdBy         String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+
+  workspace         Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner             User              @relation("SecretOwner", fields: [createdBy], references: [id])
+  versions          SecretVersion[]
+  accessLogs        SecretAccessLog[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([type])
+  @@index([rotationEnabled])
+  @@index([nextRotationAt])
+  @@map("secrets")
+}
+
+model SecretVersion {
+  id          String   @id @default(cuid())
+  secretId    String
+  version     Int
+  value       String   // Encrypted
+  createdBy   String
+  createdAt   DateTime @default(now())
+  description String?
+
+  secret      Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@unique([secretId, version])
+  @@index([secretId])
+  @@map("secret_versions")
+}
+
+model SecretAccessLog {
+  id          String   @id @default(cuid())
+  secretId    String
+  userId      String
+  workspaceId String
+  action      String   // READ, WRITE, ROTATE, DELETE
+  ipAddress   String?
+  userAgent   String?
+  success     Boolean  @default(true)
+  error       String?
+  createdAt   DateTime @default(now())
+
+  secret      Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@index([secretId])
+  @@index([userId])
+  @@index([workspaceId])
+  @@index([createdAt])
+  @@map("secret_access_logs")
+}
+
+// ============================================
+// API KEYS
+// ============================================
+
+model ApiKey {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  userId        String
+  name          String
+  keyHash       String   @unique
+  keyPrefix     String
+  permissions   Json     @default("[]")
+  scopes        String[] @default([])
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  lastUsedIp    String?
+  usageCount    Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  revokedAt     DateTime?
+  revokedBy     String?
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([keyHash])
+  @@index([isActive])
+  @@map("api_keys")
+}
+
+// ============================================
+// WEBHOOKS
+// ============================================
+
+model Webhook {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  name          String
+  url           String
+  secret        String   // Encrypted
+  events        String[]
+  isActive      Boolean  @default(true)
+  retryPolicy   Json     @default("{}")
+  headers       Json     @default("{}")
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliveries    WebhookDelivery[]
+
+  @@index([workspaceId])
+  @@index([isActive])
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id            String   @id @default(cuid())
+  webhookId     String
+  workspaceId   String
+  userId        String?
+  eventType     String
+  payload       Json
+  responseStatus Int?
+  responseBody  String?
+  attempt       Int      @default(1)
+  maxAttempts   Int      @default(3)
+  status        String   @default("PENDING") // PENDING, DELIVERED, FAILED, RETRYING
+  error         String?
+  nextRetryAt   DateTime?
+  deliveredAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  webhook       Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([webhookId])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([nextRetryAt])
+  @@map("webhook_deliveries")
+}
+
+// ============================================
+// COMPLIANCE
+// ============================================
+
+model RetentionPolicy {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  name            String
+  resourceType    ResourceType
+  conditions      Json     @default("{}")
+  retentionDays   Int
+  action          String   @default("DELETE") // DELETE, ARCHIVE, ANONYMIZE
+  isActive        Boolean  @default(true)
+  lastRunAt       DateTime?
+  nextRunAt       DateTime?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([resourceType])
+  @@index([isActive])
+  @@index([nextRunAt])
+  @@map("retention_policies")
+}
+
+model ComplianceReport {
+  id              String             @id @default(cuid())
+  workspaceId     String
+  framework       ComplianceFramework
+  reportType      String             // FULL, GAP_ANALYSIS, EVIDENCE_PACKAGE
+  status          String             @default("GENERATING") // GENERATING, COMPLETED, FAILED
+  generatedBy     String
+  dateFrom        DateTime
+  dateTo          DateTime
+  fileUrl         String?
+  fileSize        Int?
+  findings        Json               @default("[]")
+  metadata        Json               @default("{}")
+  error           String?
+  createdAt       DateTime           @default(now())
+  completedAt     DateTime?
+
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([framework])
+  @@index([status])
+  @@map("compliance_reports")
+}
+
+model DataResidencyConfig {
+  id              String                @id @default(cuid())
+  workspaceId     String                @unique
+  primaryRegion   DataResidencyRegion
+  allowedRegions  DataResidencyRegion[]
+  replicationEnabled Boolean            @default(false)
+  encryptionAtRest Boolean              @default(true)
+  encryptionInTransit Boolean           @default(true)
+  keyManagement   String                @default("MANAGED") // MANAGED, CUSTOMER, HSM
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@map("data_residency_configs")
+}
+
+// ============================================
+// PROJECTS & PAGES (from previous sprints)
+// ============================================
+
+model Project {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  icon        String?
+  color       String?
+  isPrivate   Boolean  @default(false)
+  ownerId     String
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pages       Page[]
+
+  @@index([workspaceId])
+  @@index([ownerId])
+  @@map("projects")
+}
+
+model Page {
+  id          String   @id @default(cuid())
+  projectId   String
+  workspaceId String
+  parentId    String?
+  title       String
+  icon        String?
+  coverUrl    String?
+  content     Json     @default("[]")
+  properties  Json     @default("{}")
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  sortOrder   Int      @default(0)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent      Page?     @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Page[]    @relation("PageHierarchy")
+  blocks      Block[]
+
+  @@index([projectId])
+  @@index([workspaceId])
+  @@index([parentId])
+  @@index([createdBy])
+  @@map("pages")
+}
+
+model Block {
+  id          String   @id @default(cuid())
+  pageId      String
+  workspaceId String
+  type        String
+  content     Json     @default("{}")
+  properties  Json     @default("{}")
+  sortOrder   Int      @default(0)
+  parentId    String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  page        Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent      Block?    @relation("BlockHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Block[]   @relation("BlockHierarchy")
+
+  @@index([pageId])
+  @@index([workspaceId])
+  @@index([type])
+  @@index([parentId])
+  @@map("blocks")
+}
+
+// ============================================
+// DATABASE BLOCKS (from Sprint 6)
+// ============================================
+
+model Database {
+  id          String   @id @default(cuid())
+  workspaceId String
+  pageId      String?
+  name        String
+  description String?
+  schema      Json     @default("{}")
+  views       Json     @default("[]")
+  settings    Json     @default("{}")
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  page        Page?     @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  records     DatabaseRecord[]
+
+  @@index([workspaceId])
+  @@index([pageId])
+  @@map("databases")
+}
+
+model DatabaseRecord {
+  id          String   @id @default(cuid())
+  databaseId  String
+  workspaceId String
+  values      Json     @default("{}")
+  sortOrder   Int      @default(0)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  database    Database  @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([databaseId])
+  @@index([workspaceId])
+  @@map("database_records")
+}
+
+// ============================================
+// AUTOMATION (from Sprint 7)
+// ============================================
+
+model Automation {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  name          String
+  description   String?
+  trigger       Json     @default("{}")
+  conditions    Json     @default("[]")
+  actions       Json     @default("[]")
+  isActive      Boolean  @default(true)
+  runCount      Int      @default(0)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs          AutomationRun[]
+
+  @@index([workspaceId])
+  @@index([isActive])
+  @@map("automations")
+}
+
+model AutomationRun {
+  id            String   @id @default(cuid())
+  automationId  String
+  workspaceId   String
+  triggerData   Json     @default("{}")
+  status        String   @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  result        Json?
+  error         String?
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  durationMs    Int?
+
+  automation    Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([automationId])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("automation_runs")
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+model Template {
+  id            String   @id @default(cuid())
+  workspaceId   String?
+  name          String
+  description   String?
+  category      String?
+  content       Json     @default("{}")
+  thumbnailUrl  String?
+  isPublic      Boolean  @default(false)
+  isOfficial    Boolean  @default(false)
+  tags          String[] @default([])
+  useCount      Int      @default(0)
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([category])
+  @@index([isPublic])
+  @@map("templates")
+}
